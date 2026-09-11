@@ -3,203 +3,115 @@ import java.util.Scanner;
 
 public class Juego {
 
-    // Tablero donde se desarrollará la partida.
     private Tablero tablero;
-
-    // Primer jugador.
     private Jugador jugador1;
-
-    // Segundo jugador.
     private Jugador jugador2;
-
-    // Jugador que tiene el turno actualmente.
     private Jugador jugadorActual;
+    
+    // Atributo para guardar la Inteligencia Artificial
+    private IA_Minimax ia; 
 
-    // Constructor de la clase Juego.
-    public Juego(Jugador jugador1, Jugador jugador2) {
-
-        // Guardamos el primer jugador.
+    // Constructor modificado para recibir la IA
+    public Juego(Jugador jugador1, Jugador jugador2, IA_Minimax ia) {
         this.jugador1 = jugador1;
-
-        // Guardamos el segundo jugador.
         this.jugador2 = jugador2;
-
-        // Creamos un tablero nuevo para la partida.
+        this.ia = ia; // Guardamos la instancia de la IA
         this.tablero = new Tablero();
-
-        // El primer jugador comienza la partida.
         this.jugadorActual = jugador1;
     }
-    
-        // Retorna el jugador que tiene el turno actualmente.
-    public Jugador getJugadorActual() {
 
-        // Devolvemos el jugador actual.
+    public Jugador getJugadorActual() {
         return jugadorActual;
     }
-    
-    // Retorna el tablero actual de la partida.
-public Tablero getTablero() {
 
-    // Devolvemos el tablero actual.
-    return tablero;
-}
-    
-     public boolean realizarJugada(int fila, int columna) {
+    public Tablero getTablero() {
+        return tablero;
+    }
 
-    // Verificamos que la fila esté dentro de los límites del tablero.
-    if (fila < 0 || fila > 2) {
+    public boolean realizarJugada(int fila, int columna) {
+        if (fila < 0 || fila > 2) return false;
+        if (columna < 0 || columna > 2) return false;
+        
+        if (tablero.casillaDisponible(fila, columna)) {
+            tablero.colocarFicha(fila, columna, jugadorActual.getFicha());
+            return true;
+        }
         return false;
     }
 
-    // Verificamos que la columna esté dentro de los límites del tablero.
-    if (columna < 0 || columna > 2) {
-        return false;
-    }
-
-    // Verificamos si la casilla está disponible.
-    if (tablero.casillaDisponible(fila, columna)) {
-
-        // Colocamos la ficha del jugador actual.
-        tablero.colocarFicha(fila, columna, jugadorActual.getFicha());
-
-        // La jugada se realizó correctamente.
-        return true;
-    }
-
-    // La jugada no se pudo realizar.
-    return false;
-}
-    
-        // Cambia el turno al otro jugador.
     public void cambiarTurno() {
-
-        // Si el jugador actual es el jugador 1,
-        // el turno pasa al jugador 2.
         if (jugadorActual == jugador1) {
             jugadorActual = jugador2;
         } else {
-
-            // Si no, el turno vuelve al jugador 1.
             jugadorActual = jugador1;
         }
-        
     }
-    
-        // Verifica si el jugador actual ha ganado la partida.
-    public boolean jugadorGano() {
 
-        // Consultamos al tablero si la ficha del jugador actual
-        // consiguió una combinación ganadora.
+    public boolean jugadorGano() {
         return tablero.hayGanador(jugadorActual.getFicha());
     }
-    
-        // Verifica si el tablero está lleno y no hay un ganador.
-    public boolean hayEmpate() {
 
-        // Si todas las casillas están ocupadas y no hay ganador,
-        // significa que la partida terminó en empate.
+    public boolean hayEmpate() {
         return tablero.tableroLleno() && !jugadorGano();
     }
-    
-        // Muestra el tablero actual de la partida.
-    public void mostrarTablero() {
 
-        // Le pedimos al tablero que muestre sus casillas.
+    public void mostrarTablero() {
         tablero.mostrarTablero();
     }
-    
-    // Reinicia el tablero y establece nuevamente el turno del primer jugador.
-public void reiniciar() {
 
-    // Limpiamos todas las casillas del tablero.
-    tablero.reiniciarTablero();
+    public void reiniciar() {
+        tablero.reiniciarTablero();
+        jugadorActual = jugador1;
+    }
 
-    // El primer jugador vuelve a comenzar la partida.
-    jugadorActual = jugador1;
-}
-    
-        // Inicia y controla la partida completa.
     public void jugar() {
-
-        // Creamos un Scanner para recibir datos del teclado.
         Scanner scanner = new Scanner(System.in);
-
-        // Variable que indica si la partida continúa.
         boolean partidaTerminada = false;
+        
+        System.out.println("\n¡Comienza el juego! Las 'X' tienen el primer turno.");
 
-        // Repetimos los turnos mientras la partida no termine.
         while (!partidaTerminada) {
-
-            // Mostramos el tablero antes de cada jugada.
             mostrarTablero();
+            System.out.println("\nTurno de: " + jugadorActual.getNombre() + " (" + jugadorActual.getFicha() + ")");
 
-            // Mostramos el jugador que tiene el turno.
-            System.out.println("\nTurno de: "
-                    + jugadorActual.getNombre()
-                    + " (" + jugadorActual.getFicha() + ")");
+            int fila, columna;
 
-            // Pedimos la fila al jugador.
-            System.out.print("Ingrese la fila (1-3): ");
-            int fila = scanner.nextInt();
+            // Verificamos si el jugador del turno actual es la máquina
+            if (jugadorActual.getNombre().equals("IA Minimax")) {
+                System.out.println("La IA esta analizando sus posibilidades...");
+                
+                // La máquina elige su jugada
+                int[] movimiento = ia.obtenerMejorMovimiento(tablero);
+                fila = movimiento[0];
+                columna = movimiento[1];
+            } else {
+                // Si no es la máquina, es el humano. Pedimos datos por teclado.
+                System.out.print("Ingrese la fila (1-3): ");
+                fila = scanner.nextInt() - 1;
 
-            // Pedimos la columna al jugador.
-            System.out.print("Ingrese la columna (1-3): ");
-            int columna = scanner.nextInt();
+                System.out.print("Ingrese la columna (1-3): ");
+                columna = scanner.nextInt() - 1;
+            }
 
-            // Convertimos las posiciones de 1-3 a posiciones de 0-2.
-            fila--;
-            columna--;
-
-            // Intentamos realizar la jugada.
-if (realizarJugada(fila, columna)) {
-
-    // Verificamos si el jugador consiguió tres fichas.
-    if (jugadorGano()) {
-
-        // Mostramos el tablero final.
-        mostrarTablero();
-
-        // Informamos quién ganó.
-        System.out.println("\n¡"
-                + jugadorActual.getNombre()
-                + " ha ganado!");
-
-        // Terminamos la partida.
-        partidaTerminada = true;
-
-    // Si no ganó, verificamos si hubo empate.
-    } else if (hayEmpate()) {
-
-        // Mostramos el tablero final.
-        mostrarTablero();
-
-        // Informamos que la partida terminó en empate.
-        System.out.println("\n¡La partida terminó en empate!");
-
-        // Terminamos la partida.
-        partidaTerminada = true;
-
-    } else {
-
-        // Si nadie ganó y no hay empate,
-        // cambiamos el turno.
-        cambiarTurno();
-    }
-
-} else {
-
-    // Informamos que la posición ingresada no es válida.
-    if (fila < 0 || fila > 2 || columna < 0 || columna > 2) {
-
-        System.out.println("\nLa posición ingresada no es válida.");
-
-    } else {
-
-        // Informamos que la casilla ya está ocupada.
-        System.out.println("\nEsa casilla ya está ocupada.");
-    }
-}
+            if (realizarJugada(fila, columna)) {
+                if (jugadorGano()) {
+                    mostrarTablero();
+                    System.out.println("\n¡" + jugadorActual.getNombre() + " ha ganado!");
+                    partidaTerminada = true;
+                } else if (hayEmpate()) {
+                    mostrarTablero();
+                    System.out.println("\nLa partida termino en empate!");
+                    partidaTerminada = true;
+                } else {
+                    cambiarTurno();
+                }
+            } else {
+                if (fila < 0 || fila > 2 || columna < 0 || columna > 2) {
+                    System.out.println("\nLa posicion ingresada no es valida.");
+                } else {
+                    System.out.println("\nEsa casilla ya esta ocupada.");
+                }
+            }
         }
     }
 }
