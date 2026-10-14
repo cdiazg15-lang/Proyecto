@@ -8,11 +8,15 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class InterfazGrafica extends JFrame {
 
     private JButton[][] botonesCasillas = new JButton[3][3];
     private JLabel etiquetaTitulo;
+    private JLabel etiquetaModo;
     private JLabel etiquetaTurno;
     private JLabel etiquetaEstado;
     private JButton botonNuevaPartida;
@@ -35,6 +39,9 @@ public class InterfazGrafica extends JFrame {
     private boolean modoVsIA = true;
     private boolean juegoTerminado = false;
     private boolean modoOscuro = false;
+    private String dificultad = "Difícil";
+    private int idPartida = 0;
+    private final Random random = new Random();
 
     private int victoriasJugador1 = 0;
     private int victoriasJugador2 = 0;
@@ -87,6 +94,10 @@ public class InterfazGrafica extends JFrame {
         filaTitulo.add(etiquetaTitulo, BorderLayout.WEST);
         filaTitulo.add(botonModoNoche, BorderLayout.EAST);
 
+        etiquetaModo = new JLabel(" ", SwingConstants.CENTER);
+        etiquetaModo.setFont(new Font("Arial", Font.PLAIN, 13));
+        etiquetaModo.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         etiquetaTurno = new JLabel("Turno: -", SwingConstants.CENTER);
         etiquetaTurno.setFont(new Font("Arial", Font.BOLD, 18));
         etiquetaTurno.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -106,7 +117,8 @@ public class InterfazGrafica extends JFrame {
         panelMarcador.add(chipJugador2);
 
         panelSuperior.add(filaTitulo);
-        panelSuperior.add(Box.createVerticalStrut(6));
+        panelSuperior.add(etiquetaModo);
+        panelSuperior.add(Box.createVerticalStrut(4));
         panelSuperior.add(etiquetaTurno);
         panelSuperior.add(etiquetaEstado);
         panelSuperior.add(panelMarcador);
@@ -189,7 +201,9 @@ public class InterfazGrafica extends JFrame {
 
             @Override
             public void mouseExited(MouseEvent e) {
-                boton.setBackground(modoOscuro ? BOTON_OSCURO : BOTON_CLARO);
+                if (boton.getText().isEmpty()) {
+                    boton.setBackground(modoOscuro ? BOTON_OSCURO : BOTON_CLARO);
+                }
             }
         });
     }
@@ -343,6 +357,7 @@ public class InterfazGrafica extends JFrame {
 
         etiquetaTitulo.setForeground(modoOscuro ? ACENTO_DORADO : ACENTO_AZUL);
         etiquetaTurno.setForeground(texto);
+        etiquetaModo.setForeground(texto);
         if (!juegoTerminado) {
             etiquetaEstado.setForeground(texto);
         }
@@ -392,6 +407,20 @@ public class InterfazGrafica extends JFrame {
             fichaHumano = (seleccion == 1) ? 'O' : 'X';
             fichaIA = (fichaHumano == 'X') ? 'O' : 'X';
 
+            String[] niveles = {"Fácil", "Medio", "Difícil"};
+            int nivel = JOptionPane.showOptionDialog(
+                    this,
+                    "Elige la dificultad del bot",
+                    "Dificultad",
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    niveles,
+                    niveles[2]
+            );
+            dificultad = (nivel >= 0) ? niveles[nivel] : "Difícil";
+            etiquetaModo.setText("Contra la IA - " + dificultad);
+
             if (fichaHumano == 'X') {
                 jugador1 = new Jugador("Humano", 'X');
                 jugador2 = new Jugador("IA Minimax", 'O');
@@ -426,6 +455,7 @@ public class InterfazGrafica extends JFrame {
                 jugador2 = new Jugador("Jugador 2", 'O');
             }
 
+            etiquetaModo.setText("Modo 1 vs 1");
             chipJugador1.setPrefijo("J1");
             chipJugador2.setPrefijo("J2");
         }
@@ -433,6 +463,7 @@ public class InterfazGrafica extends JFrame {
         IA_Minimax ia = new IA_Minimax(fichaIA, fichaHumano);
         juego = new Juego(jugador1, jugador2, ia);
 
+        idPartida++;
         juegoTerminado = false;
         limpiarTableroVisual();
         actualizarEstado();
@@ -450,6 +481,7 @@ public class InterfazGrafica extends JFrame {
 
     private void reiniciarPartida() {
         juego.reiniciar();
+        idPartida++;
         juegoTerminado = false;
         limpiarTableroVisual();
         actualizarEstado();
@@ -481,16 +513,18 @@ public class InterfazGrafica extends JFrame {
         etiquetaEstado.setText("La IA está pensando...");
         deshabilitarTablero();
 
+        final int idActual = idPartida;
         SwingWorker<int[], Void> worker = new SwingWorker<>() {
             @Override
-            protected int[] doInBackground() {
-                IA_Minimax ia = new IA_Minimax(fichaIA, fichaHumano);
-                return ia.obtenerMejorMovimiento(juego.getTablero());
+            protected int[] doInBackground() throws Exception {
+                Thread.sleep(500);
+                return calcularMovimientoIA();
             }
 
             @Override
             protected void done() {
                 try {
+                    if (idActual != idPartida || juegoTerminado) return;
                     int[] movimiento = get();
                     if (movimiento[0] != -1) {
                         juego.realizarJugada(movimiento[0], movimiento[1]);
@@ -507,6 +541,60 @@ public class InterfazGrafica extends JFrame {
             }
         };
         worker.execute();
+    }
+
+    private int[] calcularMovimientoIA() {
+        double probabilidadAzar;
+        switch (dificultad) {
+            case "Fácil":
+                probabilidadAzar = 0.75;
+                break;
+            case "Medio":
+                probabilidadAzar = 0.35;
+                break;
+            default:
+                probabilidadAzar = 0.0;
+                break;
+        }
+
+        if (random.nextDouble() < probabilidadAzar) {
+            List<int[]> libres = new ArrayList<>();
+            for (int fila = 0; fila < 3; fila++) {
+                for (int columna = 0; columna < 3; columna++) {
+                    if (juego.getTablero().casillaDisponible(fila, columna)) {
+                        libres.add(new int[]{fila, columna});
+                    }
+                }
+            }
+            if (!libres.isEmpty()) {
+                return libres.get(random.nextInt(libres.size()));
+            }
+        }
+
+        IA_Minimax ia = new IA_Minimax(fichaIA, fichaHumano);
+        return ia.obtenerMejorMovimiento(juego.getTablero());
+    }
+
+    private void resaltarLineaGanadora(char ficha) {
+        int[][][] lineas = {
+            {{0, 0}, {0, 1}, {0, 2}}, {{1, 0}, {1, 1}, {1, 2}}, {{2, 0}, {2, 1}, {2, 2}},
+            {{0, 0}, {1, 0}, {2, 0}}, {{0, 1}, {1, 1}, {2, 1}}, {{0, 2}, {1, 2}, {2, 2}},
+            {{0, 0}, {1, 1}, {2, 2}}, {{0, 2}, {1, 1}, {2, 0}}
+        };
+        Color verde = modoOscuro ? new Color(30, 110, 70) : new Color(170, 235, 195);
+        for (int[][] linea : lineas) {
+            boolean completa = true;
+            for (int[] celda : linea) {
+                if (juego.getTablero().obtenerFicha(celda[0], celda[1]) != ficha) {
+                    completa = false;
+                }
+            }
+            if (completa) {
+                for (int[] celda : linea) {
+                    botonesCasillas[celda[0]][celda[1]].setBackground(verde);
+                }
+            }
+        }
     }
 
     private boolean esTurnoDeIA() {
@@ -553,6 +641,7 @@ public class InterfazGrafica extends JFrame {
             etiquetaEstado.setForeground(new Color(30, 160, 90));
             etiquetaEstado.setText("¡Ganó " + ganador.getNombre() + " (" + ganador.getFicha() + ")!");
             deshabilitarTablero();
+            resaltarLineaGanadora(ganador.getFicha());
             return true;
         } else if (juego.hayEmpate()) {
             juegoTerminado = true;
