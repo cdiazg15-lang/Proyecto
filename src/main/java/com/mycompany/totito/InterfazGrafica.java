@@ -11,6 +11,7 @@ import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.function.IntConsumer;
 
 public class InterfazGrafica extends JFrame {
 
@@ -23,6 +24,23 @@ public class InterfazGrafica extends JFrame {
     private JButton botonReiniciar;
     private JButton botonVolverInicio;
     private JButton botonModoNoche;
+    private JButton botonMenuNoche;
+    private JButton botonJugar;
+
+    private CardLayout cartas;
+    private JPanel panelJuego;
+    private JPanel panelMenu;
+    private JLabel etiquetaTituloMenu;
+    private JLabel etiquetaFichaMenu;
+    private JLabel etiquetaDificultadMenu;
+    private final List<JLabel> etiquetasMenu = new ArrayList<>();
+    private JButton[] botonesModo = new JButton[2];
+    private JButton[] botonesFicha = new JButton[2];
+    private JButton[] botonesDificultad = new JButton[3];
+    private int idxModo = 0;
+    private int idxFicha = 0;
+    private int idxDificultad = 2;
+    private char fichaElegida = 'X';
 
     private PanelDegradado panelFondo;
     private JPanel panelTablero;
@@ -65,7 +83,7 @@ public class InterfazGrafica extends JFrame {
         super("Totito - IA Minimax Paulo");
         construirInterfaz();
         aplicarTema();
-        iniciarNuevaPartida();
+        mostrarMenu();
     }
 
     private void construirInterfaz() {
@@ -73,9 +91,13 @@ public class InterfazGrafica extends JFrame {
         setResizable(false);
 
         panelFondo = new PanelDegradado();
-        panelFondo.setLayout(new BorderLayout(10, 10));
+        cartas = new CardLayout();
+        panelFondo.setLayout(cartas);
         panelFondo.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
         setContentPane(panelFondo);
+
+        panelJuego = new JPanel(new BorderLayout(10, 10));
+        panelJuego.setOpaque(false);
 
         JPanel panelSuperior = new JPanel();
         panelSuperior.setOpaque(false);
@@ -123,7 +145,7 @@ public class InterfazGrafica extends JFrame {
         panelSuperior.add(etiquetaEstado);
         panelSuperior.add(panelMarcador);
 
-        panelFondo.add(panelSuperior, BorderLayout.NORTH);
+        panelJuego.add(panelSuperior, BorderLayout.NORTH);
 
         panelTablero = new JPanel(new GridLayout(3, 3, 8, 8));
         panelTablero.setOpaque(false);
@@ -144,7 +166,7 @@ public class InterfazGrafica extends JFrame {
                 panelTablero.add(boton);
             }
         }
-        panelFondo.add(panelTablero, BorderLayout.CENTER);
+        panelJuego.add(panelTablero, BorderLayout.CENTER);
 
         panelInferior = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 8));
         panelInferior.setOpaque(false);
@@ -159,10 +181,137 @@ public class InterfazGrafica extends JFrame {
         panelInferior.add(botonNuevaPartida);
         panelInferior.add(botonReiniciar);
         panelInferior.add(botonVolverInicio);
-        panelFondo.add(panelInferior, BorderLayout.SOUTH);
+        panelJuego.add(panelInferior, BorderLayout.SOUTH);
+
+        construirMenu();
+        panelFondo.add(panelMenu, "menu");
+        panelFondo.add(panelJuego, "juego");
 
         pack();
         setLocationRelativeTo(null);
+    }
+
+    private void construirMenu() {
+        panelMenu = new JPanel();
+        panelMenu.setOpaque(false);
+        panelMenu.setLayout(new BoxLayout(panelMenu, BoxLayout.Y_AXIS));
+
+        JPanel filaTitulo = new JPanel(new BorderLayout());
+        filaTitulo.setOpaque(false);
+        filaTitulo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+
+        etiquetaTituloMenu = new JLabel("TOTITO", SwingConstants.LEFT);
+        etiquetaTituloMenu.setFont(new Font("Arial", Font.BOLD, 30));
+
+        botonMenuNoche = crearBotonCircular(new LunaIcon(16));
+        botonMenuNoche.setToolTipText("Cambiar modo noche/dia");
+        botonMenuNoche.addActionListener(e -> alternarModoNoche());
+
+        filaTitulo.add(etiquetaTituloMenu, BorderLayout.WEST);
+        filaTitulo.add(botonMenuNoche, BorderLayout.EAST);
+
+        JLabel subtitulo = crearEtiquetaSeccion("Configura tu partida");
+        subtitulo.setFont(new Font("Arial", Font.PLAIN, 15));
+
+        JLabel etiquetaModoMenu = crearEtiquetaSeccion("Modo de juego");
+        JPanel filaModo = crearFilaOpciones(new String[]{"Contra la IA", "1 vs 1"}, botonesModo, 150, i -> idxModo = i);
+
+        etiquetaFichaMenu = crearEtiquetaSeccion("Tu ficha");
+        JPanel filaFicha = crearFilaOpciones(new String[]{"X", "O"}, botonesFicha, 90, i -> idxFicha = i);
+
+        etiquetaDificultadMenu = crearEtiquetaSeccion("Dificultad del bot");
+        JPanel filaDificultad = crearFilaOpciones(new String[]{"Fácil", "Medio", "Difícil"}, botonesDificultad, 100, i -> idxDificultad = i);
+
+        botonJugar = crearBotonAccion("JUGAR", ACENTO_AZUL);
+        botonJugar.setFont(new Font("Arial", Font.BOLD, 18));
+        botonJugar.setBorder(BorderFactory.createEmptyBorder(12, 60, 12, 60));
+        botonJugar.setAlignmentX(Component.CENTER_ALIGNMENT);
+        botonJugar.addActionListener(e -> comenzarDesdeMenu());
+
+        panelMenu.add(filaTitulo);
+        panelMenu.add(Box.createVerticalStrut(6));
+        panelMenu.add(subtitulo);
+        panelMenu.add(Box.createVerticalGlue());
+        panelMenu.add(etiquetaModoMenu);
+        panelMenu.add(Box.createVerticalStrut(8));
+        panelMenu.add(filaModo);
+        panelMenu.add(Box.createVerticalStrut(22));
+        panelMenu.add(etiquetaFichaMenu);
+        panelMenu.add(Box.createVerticalStrut(8));
+        panelMenu.add(filaFicha);
+        panelMenu.add(Box.createVerticalStrut(22));
+        panelMenu.add(etiquetaDificultadMenu);
+        panelMenu.add(Box.createVerticalStrut(8));
+        panelMenu.add(filaDificultad);
+        panelMenu.add(Box.createVerticalStrut(32));
+        panelMenu.add(botonJugar);
+        panelMenu.add(Box.createVerticalGlue());
+    }
+
+    private JLabel crearEtiquetaSeccion(String texto) {
+        JLabel etiqueta = new JLabel(texto, SwingConstants.CENTER);
+        etiqueta.setFont(new Font("Arial", Font.BOLD, 16));
+        etiqueta.setAlignmentX(Component.CENTER_ALIGNMENT);
+        etiquetasMenu.add(etiqueta);
+        return etiqueta;
+    }
+
+    private JPanel crearFilaOpciones(String[] textos, JButton[] destino, int ancho, IntConsumer alElegir) {
+        JPanel fila = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        fila.setOpaque(false);
+        fila.setAlignmentX(Component.CENTER_ALIGNMENT);
+        fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        for (int i = 0; i < textos.length; i++) {
+            JButton boton = new JButton(textos[i]);
+            boton.setFont(new Font("Arial", Font.BOLD, 15));
+            boton.setFocusPainted(false);
+            boton.setOpaque(true);
+            boton.setContentAreaFilled(true);
+            boton.setPreferredSize(new Dimension(ancho, 46));
+            boton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            final int indice = i;
+            boton.addActionListener(e -> {
+                alElegir.accept(indice);
+                refrescarMenu();
+            });
+            destino[i] = boton;
+            fila.add(boton);
+        }
+        return fila;
+    }
+
+    private void refrescarMenu() {
+        Color texto = modoOscuro ? TEXTO_OSCURO : TEXTO_CLARO;
+        boolean dificultadActiva = (idxModo == 0);
+
+        pintarOpciones(botonesModo, idxModo, true);
+        pintarOpciones(botonesFicha, idxFicha, true);
+        pintarOpciones(botonesDificultad, idxDificultad, dificultadActiva);
+
+        etiquetaFichaMenu.setText(idxModo == 0 ? "Tu ficha" : "Ficha del Jugador 1");
+        etiquetaDificultadMenu.setForeground(dificultadActiva ? texto : Color.GRAY);
+    }
+
+    private void pintarOpciones(JButton[] botones, int elegido, boolean activas) {
+        Color botonFondo = modoOscuro ? BOTON_OSCURO : BOTON_CLARO;
+        Color texto = modoOscuro ? TEXTO_OSCURO : TEXTO_CLARO;
+        for (int i = 0; i < botones.length; i++) {
+            JButton boton = botones[i];
+            boton.setEnabled(activas);
+            if (!activas) {
+                boton.setBackground(botonFondo);
+                boton.setForeground(Color.GRAY);
+                boton.setBorder(new LineBorder(Color.GRAY, 2, true));
+            } else if (i == elegido) {
+                boton.setBackground(ACENTO_AZUL);
+                boton.setForeground(Color.WHITE);
+                boton.setBorder(new LineBorder(ACENTO_DORADO, 3, true));
+            } else {
+                boton.setBackground(botonFondo);
+                boton.setForeground(texto);
+                boton.setBorder(new LineBorder(ACENTO_AZUL, 2, true));
+            }
+        }
     }
 
     private JButton crearBotonAccion(String texto, Color color) {
@@ -363,6 +512,12 @@ public class InterfazGrafica extends JFrame {
         }
 
         botonModoNoche.setIcon(modoOscuro ? new SolIcon(16) : new LunaIcon(16));
+        botonMenuNoche.setIcon(modoOscuro ? new SolIcon(16) : new LunaIcon(16));
+        etiquetaTituloMenu.setForeground(modoOscuro ? ACENTO_DORADO : ACENTO_AZUL);
+        for (JLabel etiqueta : etiquetasMenu) {
+            etiqueta.setForeground(texto);
+        }
+        refrescarMenu();
 
         for (int fila = 0; fila < 3; fila++) {
             for (int columna = 0; columna < 3; columna++) {
@@ -377,49 +532,35 @@ public class InterfazGrafica extends JFrame {
         panelFondo.repaint();
     }
 
+    private void mostrarMenu() {
+        refrescarMenu();
+        cartas.show(panelFondo, "menu");
+    }
+
+    private void comenzarDesdeMenu() {
+        modoVsIA = (idxModo == 0);
+        fichaElegida = (idxFicha == 0) ? 'X' : 'O';
+        String[] niveles = {"Fácil", "Medio", "Difícil"};
+        dificultad = niveles[idxDificultad];
+
+        victoriasJugador1 = 0;
+        victoriasJugador2 = 0;
+        totalEmpates = 0;
+        actualizarMarcador();
+
+        cartas.show(panelFondo, "juego");
+        crearPartida();
+    }
+
     private void iniciarNuevaPartida() {
-        String[] modos = {"Contra la IA", "1 vs 1"};
-        int modoSeleccionado = JOptionPane.showOptionDialog(
-                this,
-                "¿Cómo quieres jugar?",
-                "Nueva partida",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                modos,
-                modos[0]
-        );
-        modoVsIA = (modoSeleccionado != 1);
+        fichaElegida = (fichaElegida == 'X') ? 'O' : 'X';
+        crearPartida();
+    }
 
+    private void crearPartida() {
         if (modoVsIA) {
-            String[] opciones = {"X", "O"};
-            int seleccion = JOptionPane.showOptionDialog(
-                    this,
-                    "¿Con qué ficha quieres jugar?",
-                    "Nueva partida",
-                    JOptionPane.DEFAULT_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    opciones,
-                    opciones[0]
-            );
-
-            fichaHumano = (seleccion == 1) ? 'O' : 'X';
+            fichaHumano = fichaElegida;
             fichaIA = (fichaHumano == 'X') ? 'O' : 'X';
-
-            String[] niveles = {"Fácil", "Medio", "Difícil"};
-            int nivel = JOptionPane.showOptionDialog(
-                    this,
-                    "Elige la dificultad del bot",
-                    "Dificultad",
-                    JOptionPane.DEFAULT_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    niveles,
-                    niveles[2]
-            );
-            dificultad = (nivel >= 0) ? niveles[nivel] : "Difícil";
-            etiquetaModo.setText("Contra la IA - " + dificultad);
 
             if (fichaHumano == 'X') {
                 jugador1 = new Jugador("Humano", 'X');
@@ -429,30 +570,19 @@ public class InterfazGrafica extends JFrame {
                 jugador2 = new Jugador("Humano", 'O');
             }
 
+            etiquetaModo.setText("Contra la IA - " + dificultad);
             chipJugador1.setPrefijo("TÚ");
             chipJugador2.setPrefijo("BOT");
         } else {
-            String[] opciones = {"X", "O"};
-            int seleccion = JOptionPane.showOptionDialog(
-                    this,
-                    "Jugador 1, ¿con qué ficha quieres jugar?",
-                    "Nueva partida",
-                    JOptionPane.DEFAULT_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    opciones,
-                    opciones[0]
-            );
-
             fichaHumano = 'X';
             fichaIA = 'O';
 
-            if (seleccion == 1) {
-                jugador1 = new Jugador("Jugador 2", 'X');
-                jugador2 = new Jugador("Jugador 1", 'O');
-            } else {
+            if (fichaElegida == 'X') {
                 jugador1 = new Jugador("Jugador 1", 'X');
                 jugador2 = new Jugador("Jugador 2", 'O');
+            } else {
+                jugador1 = new Jugador("Jugador 2", 'X');
+                jugador2 = new Jugador("Jugador 1", 'O');
             }
 
             etiquetaModo.setText("Modo 1 vs 1");
@@ -472,11 +602,8 @@ public class InterfazGrafica extends JFrame {
     }
 
     private void volverAlInicio() {
-        victoriasJugador1 = 0;
-        victoriasJugador2 = 0;
-        totalEmpates = 0;
-        actualizarMarcador();
-        iniciarNuevaPartida();
+        idPartida++;
+        mostrarMenu();
     }
 
     private void reiniciarPartida() {
