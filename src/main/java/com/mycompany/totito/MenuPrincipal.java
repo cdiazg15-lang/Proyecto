@@ -26,7 +26,7 @@ public class MenuPrincipal extends JFrame {
             new BoxLayout(principal, BoxLayout.Y_AXIS)
         );
 
-        JLabel etiqueta = new JLabel("PAULO ARCADE");
+        JLabel etiqueta = new JLabel("ARCADE");
         etiqueta.setFont(new Font("Arial", Font.BOLD, 16));
         etiqueta.setForeground(turquesa);
         etiqueta.setAlignmentX(Component.CENTER_ALIGNMENT);
